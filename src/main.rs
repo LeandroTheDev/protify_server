@@ -1,3 +1,6 @@
+mod request;
+use request::handler::RequestHandler;
+
 use std::convert::Infallible;
 use std::net::SocketAddr;
 
@@ -5,7 +8,7 @@ use http_body_util::Full;
 use hyper::body::Bytes;
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
-use hyper::{Request, Response};
+use hyper::{Request, Response, Uri};
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
 
@@ -22,19 +25,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     // We start a loop to continuously accept incoming connections
     loop {
-        //Get stream
+        // Get tcp stream
         let (stream, client_address) = listener.accept().await?;
-        
-        println!("New connection: {:?}", client_address);
 
-        // Use an adapter to create a stream for connection
+        println!("request from: {:?}", client_address);
+
+        // Convert the TcpStream into Io Tokio Stream
         let io = TokioIo::new(stream);
 
-        // Spawn a tokio task to serve multiple connections concurrently
+        // Handle multiple connections concurrently
         tokio::task::spawn(async move {
-            // Finally, we bind the incoming connection to our `hello` service
+            // Building http message
             if let Err(err) = http1::Builder::new()
-                // `service_fn` converts our function in a `Service`
+                // Transforming the http message to the handler
                 .serve_connection(io, service_fn(handler))
                 .await
             {
@@ -43,10 +46,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         });
     }
 }
-async fn handler(request: Request<hyper::body::Incoming>) -> Result<Response<Full<Bytes>>, Infallible> {
-    let url = request.uri();
-    let mut response = Response::new(Full::new(Bytes::from("Hello, World!")));
-    let headers = response.headers_mut();
-    headers.insert("Connection", "close".parse().unwrap());
-    Ok(response)
+
+///Handles the message from the client
+async fn handler(
+    request: Request<hyper::body::Incoming>,
+) -> Result<Response<Full<Bytes>>, Infallible> {
+    //Getting the url
+    let url: &Uri = request.uri();
+    //Creating the handler for url
+    let handler: RequestHandler = RequestHandler::new(url.to_string());
+    //Receiving the response
+    let response: Result<Response<Full<Bytes>>, Infallible> = handler.handle_request().await;
+    //Returning to the client
+    response
 }

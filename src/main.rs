@@ -1,9 +1,14 @@
+//Protify Dependencies
 mod request;
 use request::handler::RequestHandler;
 
+//Rust Dependencies
+use std::collections::HashMap;
 use std::convert::Infallible;
 use std::net::SocketAddr;
+use std::time::Duration;
 
+//Plugins Dependencies
 use http_body_util::Full;
 use hyper::body::Bytes;
 use hyper::server::conn::http1;
@@ -18,6 +23,8 @@ const PORTS: u16 = 3000;
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let server_address = SocketAddr::from(([127, 0, 0, 1], PORTS));
 
+    let mut ips_timeout: HashMap<String, i32> = HashMap::new();
+
     // We create a TcpListener and bind it to 127.0.0.1:???
     let listener = TcpListener::bind(server_address).await?;
 
@@ -25,8 +32,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     // We start a loop to continuously accept incoming connections
     loop {
+        //Server Overload
+        //500 millions simultanious is the limit
+        if ips_timeout.len() > 500000000 {
+            continue;
+        }
+
         // Get tcp stream
         let (stream, client_address) = listener.accept().await?;
+
+        //DDOS Attack Protection
+        let addres_string = &client_address.to_string();
+        //Check client existence
+        if let Some(&timeout_address) = ips_timeout.get(addres_string) {
+            //Check if client is timedout, the limit is 99 requisition in 1 minute
+            if timeout_address == 99 {
+                println!("temporary banned: {:?}", addres_string);
+                continue;
+            }
+            //Add one limiar for the timeout
+            ips_timeout.insert(addres_string.clone(), timeout_address + 1);
+        }
+        //In other cases create a timeout for the ddos limit and create a line to ips_timeout
+        else {
+            //This will make the timeout reset after 60 seconds
+            tokio::runtime::Runtime::new().unwrap().block_on(async {
+                settimeout::set_timeout(Duration::from_secs(60)).await;
+                ips_timeout.remove_entry(addres_string);
+            });
+            //Start counting
+            ips_timeout.insert(addres_string.clone(), 1);
+        }
 
         println!("request from: {:?}", client_address);
 

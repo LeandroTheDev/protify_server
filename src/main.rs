@@ -1,19 +1,19 @@
 //Protify Dependencies
 mod request;
 use request::handler::RequestHandler;
+mod components;
+use components::ip_hash::IpHash;
 
 //Rust Dependencies
-use std::collections::HashMap;
 use std::convert::Infallible;
 use std::net::SocketAddr;
-use std::time::Duration;
 
 //Plugins Dependencies
-use http_body_util::Full;
-use hyper::body::Bytes;
+use http_body_util::{BodyExt, Collected, Full};
+use hyper::body::{Body, Bytes};
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
-use hyper::{Request, Response, Uri};
+use hyper::{Method, Request, Response};
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
 
@@ -21,9 +21,8 @@ const PORTS: u16 = 3000;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let mut ips_timeout: IpHash = IpHash::new();
     let server_address = SocketAddr::from(([127, 0, 0, 1], PORTS));
-
-    let mut ips_timeout: HashMap<String, i32> = HashMap::new();
 
     // We create a TcpListener and bind it to 127.0.0.1:???
     let listener = TcpListener::bind(server_address).await?;
@@ -33,8 +32,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // We start a loop to continuously accept incoming connections
     loop {
         //Server Overload
-        //500 millions simultanious is the limit
-        if ips_timeout.len() > 500000000 {
+        //1 thousand simultanious is the limit
+        if ips_timeout.length() >= 1000 {
             continue;
         }
 
@@ -42,26 +41,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let (stream, client_address) = listener.accept().await?;
 
         //DDOS Attack Protection
-        let addres_string = &client_address.to_string();
-        //Check client existence
-        if let Some(&timeout_address) = ips_timeout.get(addres_string) {
-            //Check if client is timedout, the limit is 99 requisition in 1 minute
-            if timeout_address == 99 {
-                println!("temporary banned: {:?}", addres_string);
-                continue;
-            }
-            //Add one limiar for the timeout
-            ips_timeout.insert(addres_string.clone(), timeout_address + 1);
+        let addres_string = client_address.to_string();
+        //Check the client limit connections
+        if ips_timeout.get_value(&addres_string) < ips_timeout.limit {
+            ips_timeout.insert(addres_string.clone());
         }
-        //In other cases create a timeout for the ddos limit and create a line to ips_timeout
+        //If is banned just ignore
         else {
-            //This will make the timeout reset after 60 seconds
-            tokio::runtime::Runtime::new().unwrap().block_on(async {
-                settimeout::set_timeout(Duration::from_secs(60)).await;
-                ips_timeout.remove_entry(addres_string);
-            });
-            //Start counting
-            ips_timeout.insert(addres_string.clone(), 1);
+            continue;
         }
 
         println!("request from: {:?}", client_address);
@@ -87,12 +74,68 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 async fn handler(
     request: Request<hyper::body::Incoming>,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
+    async fn handle_request(
+        url: String,
+        method: Method,
+        header: hyper::HeaderMap,
+        body_string: String,
+    ) -> Result<Response<Full<Bytes>>, Infallible> {
+        //Creating the handler for url
+        let handler: RequestHandler =
+            RequestHandler::new(url.to_string(), method, header, body_string);
+        //Receiving the response
+        let response: Result<Response<Full<Bytes>>, Infallible> = handler.handle_request().await;
+        //Returning to the client
+        response
+    }
     //Getting the url
-    let url: &Uri = request.uri();
-    //Creating the handler for url
-    let handler: RequestHandler = RequestHandler::new(url.to_string());
-    //Receiving the response
-    let response: Result<Response<Full<Bytes>>, Infallible> = handler.handle_request().await;
-    //Returning to the client
-    response
+    let url: String = request.uri().clone().to_string();
+
+    //Getting the method (GET/POST/DELETE...)
+    let method: Method = request.method().clone();
+
+    //Getting the Headers
+    let headers: hyper::HeaderMap = request.headers().clone();
+    //Receiving the headers size
+    let headers_size: u16 = match headers.capacity().try_into() {
+        Ok(value) => value,
+        Err(_) => 0,
+    };
+    //Check if the headers size is valid
+    if headers_size == 0 {
+        return handle_request(
+            String::from("/limit_overflow"),
+            method,
+            headers,
+            String::from("Limit Overflow"),
+        )
+        .await;
+    }
+
+    //Getting the body size
+    let body_size: u64 = match request.body().size_hint().upper() {
+        Some(value) => value,
+        None => 0,
+    };
+    //Checking if the body size is upper the max: 10 mb
+    if body_size >= 10485760 {
+        return handle_request(
+            String::from("/limit_overflow"),
+            method,
+            headers,
+            String::from("Limit Overflow"),
+        )
+        .await;
+    }
+    //Receiving the body data
+    let body: Collected<Bytes> = match request.into_body().collect().await {
+        Ok(collected) => collected,
+        Err(_) => http_body_util::Collected::default(),
+    };
+    //Transforming to bytes
+    let body_bytes: Bytes = body.to_bytes();
+    //Full body string
+    let body_string: String = String::from_utf8_lossy(&body_bytes.to_vec()).into_owned();
+
+    handle_request(url, method, headers, body_string).await
 }

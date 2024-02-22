@@ -42,7 +42,7 @@ impl IpHash {
             self.create_new_array_to_ip(ip);
         }
     }
-    
+
     ///Get the quantity of ips in ip hash
     pub fn length(&self) -> u16 {
         let length: usize = self.ips.len();
@@ -57,11 +57,11 @@ impl IpHash {
     }
 
     ///Get the value from ip, returns 0 if not exist
-    pub fn get_value(&self, ip: &String) -> u8 {
+    pub fn get_value(&self, ip: &String) -> u8 {        
         //Get the hash value from the ips hash
         if let Some(ip_value) = self.ips.get(ip) {
             //Convert the u8 string to u8
-            match ip_value[1].parse::<u8>() {
+            match ip_value[0].parse::<u8>() {
                 Ok(parsed_value) => {
                     return parsed_value;
                 }
@@ -108,6 +108,11 @@ impl IpHash {
 
     ///Create a new array to be placed in the ip hash map
     fn create_new_array_to_ip(&mut self, ip: String) {
-        self.ips.insert(ip, [String::from("0"), String::from("0")]);
+        //Create the array
+        let mut array = [String::from("1"), String::from("0")];
+        //Update date time to now
+        self.update_date_to_now_from_array(&mut array);
+        //Insert in the hash
+        self.ips.insert(ip, array);
     }
 }

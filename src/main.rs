@@ -1,5 +1,6 @@
 //Protify Dependencies
 mod request;
+use hyper::header::HeaderValue;
 use request::handler::RequestHandler;
 mod components;
 use components::ip_hash::IpHash;
@@ -7,6 +8,7 @@ use components::ip_hash::IpHash;
 //Rust Dependencies
 use std::convert::Infallible;
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 //Plugins Dependencies
 use http_body_util::{BodyExt, Collected, Full};
@@ -17,7 +19,7 @@ use hyper::{Method, Request, Response};
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
 
-const PORTS: u16 = 3000;
+const PORTS: u16 = 6161;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -41,101 +43,134 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let (stream, client_address) = listener.accept().await?;
 
         //DDOS Attack Protection
-        let addres_string = client_address.to_string();
+        let address_string: String = client_address.ip().to_string();
         //Check the client limit connections
-        if ips_timeout.get_value(&addres_string) < ips_timeout.limit {
-            ips_timeout.insert(addres_string.clone());
+        let timeout_value: u8 = ips_timeout.get_value(&address_string);
+        if timeout_value < ips_timeout.limit {
+            if timeout_value + 1 >= ips_timeout.limit {
+                println!("banned: {:?}", address_string);
+                ips_timeout.insert(address_string.clone());
+            } else {
+                if timeout_value >= 80 {
+                    println!(
+                        "suspicious request: {:?}, limit: {:?}",
+                        address_string, timeout_value
+                    );
+                }
+                ips_timeout.insert(address_string.clone());
+            }
         }
         //If is banned just ignore
         else {
             continue;
         }
 
-        println!("request from: {:?}", client_address);
-
         // Convert the TcpStream into Io Tokio Stream
         let io = TokioIo::new(stream);
 
         // Handle multiple connections concurrently
         tokio::task::spawn(async move {
+            let service_handler = Arc::new(ServiceHandler::new(address_string));
+
+            let cloned_handler = Arc::clone(&service_handler);
+
+            let service_function = service_fn(move |req| {
+                let cloned_handler = Arc::clone(&cloned_handler);
+                async move { cloned_handler.handle_service(req).await }
+            });
             // Building http message
             if let Err(err) = http1::Builder::new()
                 // Transforming the http message to the handler
-                .serve_connection(io, service_fn(handler))
+                .serve_connection(io, service_function)
                 .await
             {
-                println!("Error connection: {:?}", err);
+                println!("connection failed: {:?}", err);
             }
         });
     }
 }
 
-///Handles the message from the client
-async fn handler(
-    request: Request<hyper::body::Incoming>,
-) -> Result<Response<Full<Bytes>>, Infallible> {
-    async fn handle_request(
-        url: String,
-        method: Method,
-        header: hyper::HeaderMap,
-        body_string: String,
+struct ServiceHandler {
+    ip: String,
+}
+impl ServiceHandler {
+    pub fn new(client_ip: String) -> Self {
+        ServiceHandler { ip: client_ip }
+    }
+    pub async fn handle_service(
+        &self,
+        request: Request<hyper::body::Incoming>,
     ) -> Result<Response<Full<Bytes>>, Infallible> {
-        //Creating the handler for url
-        let handler: RequestHandler =
-            RequestHandler::new(url.to_string(), method, header, body_string);
-        //Receiving the response
-        let response: Result<Response<Full<Bytes>>, Infallible> = handler.handle_request().await;
-        //Returning to the client
-        response
+        async fn handle_request(
+            url: String,
+            method: Method,
+            header: hyper::HeaderMap,
+            body_string: String,
+        ) -> Result<Response<Full<Bytes>>, Infallible> {
+            //Creating the handler for url
+            let handler: RequestHandler =
+                RequestHandler::new(url.to_string(), method, header, body_string);
+            //Receiving the response
+            let response: Result<Response<Full<Bytes>>, Infallible> =
+                handler.handle_request().await;
+            //Returning to the client
+            response
+        }
+        //Getting the url
+        let url: String = request.uri().clone().to_string();
+
+        //Getting the method (GET/POST/DELETE...)
+        let method: Method = request.method().clone();
+
+        //Getting the Headers
+        let mut headers: hyper::HeaderMap = request.headers().clone();
+        //Receiving the headers size
+        let headers_size: u8 = match headers.capacity().try_into() {
+            Ok(value) => value,
+            Err(_) => 255,
+        };
+        //Check the headers size limit
+        if headers_size == 255 {
+            return handle_request(
+                String::from("/limit_overflow"),
+                method,
+                headers,
+                String::from("Limit Overflow"),
+            )
+            .await;
+        }
+        //Inserting the full client address into headers
+        headers.insert(
+            "host_full",
+            HeaderValue::from_str(self.ip.as_str()).unwrap(),
+        );
+        //Getting the body size
+        let body_size: u8 = match request.body().size_hint().upper() {
+            Some(value) => match value.try_into() {
+                Ok(value) => value,
+                Err(_) => 255,
+            },
+            None => 255,
+        };
+        //Check body size limit in kilobytes
+        if body_size == 255 {
+            return handle_request(
+                String::from("/limit_overflow"),
+                method,
+                headers,
+                String::from("Limit Overflow"),
+            )
+            .await;
+        }
+        //Receiving the body data
+        let body: Collected<Bytes> = match request.into_body().collect().await {
+            Ok(collected) => collected,
+            Err(_) => http_body_util::Collected::default(),
+        };
+        //Transforming to bytes
+        let body_bytes: Bytes = body.to_bytes();
+        //Full body string
+        let body_string: String = String::from_utf8_lossy(&body_bytes.to_vec()).into_owned();
+        handle_request(url, method, headers, body_string).await
     }
-    //Getting the url
-    let url: String = request.uri().clone().to_string();
-
-    //Getting the method (GET/POST/DELETE...)
-    let method: Method = request.method().clone();
-
-    //Getting the Headers
-    let headers: hyper::HeaderMap = request.headers().clone();
-    //Receiving the headers size
-    let headers_size: u16 = match headers.capacity().try_into() {
-        Ok(value) => value,
-        Err(_) => 0,
-    };
-    //Check if the headers size is valid
-    if headers_size == 0 {
-        return handle_request(
-            String::from("/limit_overflow"),
-            method,
-            headers,
-            String::from("Limit Overflow"),
-        )
-        .await;
-    }
-
-    //Getting the body size
-    let body_size: u64 = match request.body().size_hint().upper() {
-        Some(value) => value,
-        None => 0,
-    };
-    //Checking if the body size is upper the max: 10 mb
-    if body_size >= 10485760 {
-        return handle_request(
-            String::from("/limit_overflow"),
-            method,
-            headers,
-            String::from("Limit Overflow"),
-        )
-        .await;
-    }
-    //Receiving the body data
-    let body: Collected<Bytes> = match request.into_body().collect().await {
-        Ok(collected) => collected,
-        Err(_) => http_body_util::Collected::default(),
-    };
-    //Transforming to bytes
-    let body_bytes: Bytes = body.to_bytes();
-    //Full body string
-    let body_string: String = String::from_utf8_lossy(&body_bytes.to_vec()).into_owned();
-
-    handle_request(url, method, headers, body_string).await
 }

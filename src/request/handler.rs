@@ -1,8 +1,15 @@
-use std::convert::Infallible;
+//Protify Dependencies
+use crate::components::authentication::{Authentication, Permissions};
 
+//Rust Dependencies
+use std::{collections::HashMap, convert::Infallible};
+
+//Plugins Dependencies
 use http_body_util::Full;
 use hyper::{body::Bytes, HeaderMap, Method, Response, StatusCode};
 use serde_json::{json, Value};
+
+use super::profile;
 
 ///Default Responses for client messages
 pub struct DefaultResponse {
@@ -32,7 +39,7 @@ impl ErrorStruct {
     pub fn not_found() -> Result<Response<Full<Bytes>>, Infallible> {
         //Creating the response
         let json_body: Value = json!({
-            "message": "Not Found: cannot find the specific URL"
+            "message": "not_found_cannot_find_the_specific_url"
         });
         let mut response: DefaultResponse =
             DefaultResponse::new(json_body.to_string(), StatusCode::NOT_FOUND);
@@ -41,7 +48,7 @@ impl ErrorStruct {
     pub fn size_limit() -> Result<Response<Full<Bytes>>, Infallible> {
         //Creating the response
         let json_body = json!({
-            "message": "Size Limit"
+            "message": "size_limit"
         });
         let mut response: DefaultResponse =
             DefaultResponse::new(json_body.to_string(), StatusCode::NOT_ACCEPTABLE);
@@ -59,7 +66,18 @@ impl ErrorStruct {
     pub fn authentication_required() -> Result<Response<Full<Bytes>>, Infallible> {
         //Creating the response
         let json_body = json!({
-            "message": "You dont have access to this action"
+            "message": "user_dont_have_access_to_this_action"
+        });
+        let mut response: DefaultResponse = DefaultResponse::new(
+            json_body.to_string(),
+            StatusCode::NETWORK_AUTHENTICATION_REQUIRED,
+        );
+        Ok(response.build_response())
+    }
+    pub fn invalid_parameters() -> Result<Response<Full<Bytes>>, Infallible> {
+        //Creating the response
+        let json_body = json!({
+            "message": "invalid_parameters"
         });
         let mut response: DefaultResponse = DefaultResponse::new(
             json_body.to_string(),
@@ -74,6 +92,7 @@ pub struct RequestHandler {
     url: String,
     method: Method,
     header: HeaderMap,
+    query: HashMap<String, String>,
     body: String,
 }
 impl RequestHandler {
@@ -82,26 +101,73 @@ impl RequestHandler {
         request_url: String,
         request_method: Method,
         request_header: HeaderMap,
+        request_query: HashMap<String, String>,
         request_body: String,
     ) -> Self {
         RequestHandler {
             url: request_url,
             method: request_method,
             header: request_header,
+            query: request_query,
             body: request_body,
         }
     }
     ///Handles the request based in url created on new function
-    pub async fn handle_request(&self) -> Result<Response<Full<Bytes>>, Infallible> {
+    pub fn handle_request(&self) -> Result<Response<Full<Bytes>>, Infallible> {
         //Handling the url
         let url_string: &str = &self.url;
         match self.method {
             //GET
             Method::GET => match url_string {
-                "/store_main" => super::store::games::store_main(self.header.clone()).await,
-                "/download_game" => {
-                    super::store::games::download_game(self.header.clone(), self.body.clone())
+                "/store_showcase" => {
+                    //Authentication Check
+                    match Authentication::new(self.header.clone()) {
+                        Ok(authentication) => {
+                            if authentication.authenticate(Permissions::ACTION_STORE_MAIN)
+                                != Permissions::PERMISSION_GRANTED
+                            {
+                                return ErrorStruct::authentication_required();
+                            }
+                        }
+                        Err(err) => return ErrorStruct::internal_server_error(err.to_string()),
+                    };
+                    super::store::games::store_showcase()
                 }
+                "/get_item_info" => {
+                    //Authentication Check
+                    match Authentication::new(self.header.clone()) {
+                        Ok(authentication) => {
+                            if authentication.authenticate(Permissions::ACTION_GET_GAME_INFO)
+                                != Permissions::PERMISSION_GRANTED
+                            {
+                                return ErrorStruct::authentication_required();
+                            }
+                        }
+                        Err(err) => return ErrorStruct::internal_server_error(err.to_string()),
+                    };
+                    super::store::games::get_item_info(self.query.clone())
+                }
+                "/download_item" => {
+                    //Authentication Check
+                    match Authentication::new(self.header.clone()) {
+                        Ok(authentication) => {
+                            if authentication.authenticate(Permissions::ACTION_DOWNLOAD_GAME)
+                                != Permissions::PERMISSION_GRANTED
+                            {
+                                return ErrorStruct::authentication_required();
+                            }
+                        }
+                        Err(err) => return ErrorStruct::internal_server_error(err.to_string()),
+                    };
+                    super::store::games::download_item(self.query.clone())
+                }
+                "/limit_overflow" => ErrorStruct::size_limit(),
+                //Not found request
+                _ => ErrorStruct::not_found(),
+            },
+            //POST
+            Method::PATCH => match url_string {
+                "/change_username" => profile::user::User::change_username(self.body.clone()),
                 "/limit_overflow" => ErrorStruct::size_limit(),
                 //Not found request
                 _ => ErrorStruct::not_found(),

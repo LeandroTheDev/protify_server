@@ -1,6 +1,6 @@
 # Protify Server
 
-Creates the server for hosting the protify features
+Creates the server for hosting the protify features, protify is game/software launcher to make the life of linux users easy to run windows applications in linux or native applications, take a look in [Protify](https://github.com/LeandroTheDev/protify)
 
 ### Technical Informations
 
@@ -8,12 +8,18 @@ The servers by default is ready to receive 99 request from 1 ip during 1 minute,
 
 Body can only send 800 kilobytes, if a request send more than this it will be ignored with a Limit Overflow response.
 
+Url path can only have 1000 characters, otherwise will be ignored with a Limite Overflow response
+
 Headers cannot be more than 255 kilobytes, if this is not satisfied the client will receive Limit Overflow response.
 - All requests needs to include this headers: username, token, if not will get a Not Authorized response.
 - anonymous user can send a request without token, but have limited access to actions in the server
 
+Sending query needs the ``&`` character and the variable name also the value after the ``=`` example: ``/test&value=1&othervalue=2``
+
 Database Struct
-- USERS
+- USERS, users data
+- GAME_REGISTER, register the games to be finded in store
+- SHOWCASE, add the games id you want to be show in showcase on main store menu
 
 The database can be configured in src/components/database.rs
 ```
@@ -23,6 +29,15 @@ pub const DATABASE_PASSWORD: &'static str = "secret-password";
 pub const DATABASE_IP: &'static str = "127.0.0.1";
 pub const DATABASE_PORTS: u16 = 3306;
 ```
+
+Request Errors:
+- invalid_store_path_contact_the_server_owner (internal server error)
+- error_message_is_empty (internal server error)
+- connection_to_database_failed (internal server error)
+- not_found_cannot_find_the_specific_url (invalid request)
+- size_limit (request too big)
+- user_dont_have_access_to_this_action (invalid authentication)
+- invalid_parameters (user send invalid data)
 
 ### Server Games
 

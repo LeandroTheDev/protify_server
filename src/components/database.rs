@@ -52,6 +52,24 @@ impl Database {
                         )
                         .unwrap();
                 }
+                //Store Register
+                {
+                    connection
+                        .query_drop(
+                            r"CREATE TABLE IF NOT EXISTS STORE
+                (ID MEDIUMINT, NAME VARCHAR(255), CATEGORY TINYTEXT, LANGUAGES TINYTEXT, DESCRIPTION LONGTEXT)",
+                        )
+                        .unwrap();
+                }
+                //Showcase
+                {
+                    connection
+                        .query_drop(
+                            r"CREATE TABLE IF NOT EXISTS SHOWCASE
+                (ID MEDIUMINT)",
+                        )
+                        .unwrap();
+                }
             }
             _ => {}
         };
@@ -123,14 +141,17 @@ impl Database {
             }
         }
         //From build
-        query_text += format!(" FROM {} ", from_param).as_str();
+        query_text += format!(" FROM {}", from_param).as_str();
         //Where build
         {
             let mut lenght: i32 = 0;
             //Unfortunaly we need the undescore because in rust theres a type where :/
             for _where in &where_params {
+                if where_params.len() == 0 {
+                    break;
+                }
                 if lenght == 0 {
-                    query_text += "WHERE ";
+                    query_text += " WHERE ";
                     query_text += _where;
                 } else {
                     query_text += " AND ";
@@ -186,6 +207,28 @@ impl Database {
         hash_response
     }
 
+    pub fn convert_hash_map_to_json_value(
+        hashmap: HashMap<String, String>,
+    ) -> HashMap<String, serde_json::Value> {
+        let mut converted_hash: HashMap<String, serde_json::Value> = HashMap::new();
+        //Swipe the the response and get key and value
+        for (key, value) in hashmap.clone().iter_mut() {
+            //Try to convert to int
+            match value.as_str().parse::<i32>() {
+                //Success Converting
+                Ok(value_parsed) => {
+                    converted_hash.insert(
+                        key.to_string(),
+                        serde_json::Value::Number(serde_json::Number::from(value_parsed)),
+                    );
+                    continue;
+                }
+                Err(_) => {}
+            };
+        }
+        converted_hash
+    }
+
     ///Create a pool to the database returns None if cannot handshake to database
     fn instanciate_database(database: String) -> Option<Pool> {
         // Database Connection
@@ -205,9 +248,23 @@ impl Database {
         }
     }
 
+    ///Returns the error if exist, if not returns a empty string
+    pub fn check_errors(&self, response: &[HashMap<String, String>]) -> Option<String> {
+        match response
+            .iter()
+            .find(|map: &&HashMap<String, String>| map.contains_key("error_message"))
+        {
+            Some(map) => match map.get("error_message") {
+                Some(err) => Some(String::from(err)),
+                None => Some(String::from("error_message_is_empty")),
+            },
+            None => None,
+        }
+    }
+
     ///Log Errors
     fn log_error(reason: &io::Error, query: &str) {
-        println!(
+        eprintln!(
             r"-------------------
 [Database] Panic:
 query: {:?}

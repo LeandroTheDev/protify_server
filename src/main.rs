@@ -19,6 +19,7 @@ use hyper::{Method, Request, Response};
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
 
+///Server Listining Ports
 const PORTS: u16 = 6161;
 
 #[tokio::main]
@@ -101,6 +102,7 @@ impl ServiceHandler {
         &self,
         request: Request<hyper::body::Incoming>,
     ) -> Result<Response<Full<Bytes>>, Infallible> {
+        //Function Helper to handle request
         async fn handle_request(
             url: String,
             method: Method,
@@ -116,6 +118,7 @@ impl ServiceHandler {
             //Returning to the client
             response
         }
+
         //Getting the url
         let url: String = request.uri().clone().to_string();
 
@@ -133,7 +136,7 @@ impl ServiceHandler {
         if headers_size == 255 {
             return handle_request(
                 String::from("/limit_overflow"),
-                method,
+                Method::GET,
                 headers,
                 String::from("Limit Overflow"),
             )
@@ -156,7 +159,7 @@ impl ServiceHandler {
         if body_size == 255 {
             return handle_request(
                 String::from("/limit_overflow"),
-                method,
+                Method::GET,
                 headers,
                 String::from("Limit Overflow"),
             )
@@ -171,6 +174,8 @@ impl ServiceHandler {
         let body_bytes: Bytes = body.to_bytes();
         //Full body string
         let body_string: String = String::from_utf8_lossy(&body_bytes.to_vec()).into_owned();
+
+        //Return the response for the client
         handle_request(url, method, headers, body_string).await
     }
 }

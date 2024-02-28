@@ -59,7 +59,7 @@ impl ErrorStruct {
     pub fn authentication_required() -> Result<Response<Full<Bytes>>, Infallible> {
         //Creating the response
         let json_body = json!({
-            "message": "Anonymous dont have acess to this action"
+            "message": "You dont have access to this action"
         });
         let mut response: DefaultResponse = DefaultResponse::new(
             json_body.to_string(),
@@ -98,7 +98,7 @@ impl RequestHandler {
         match self.method {
             //GET
             Method::GET => match url_string {
-                "/store_main" => super::store::games::store_main(self.header.clone()),
+                "/store_main" => super::store::games::store_main(self.header.clone()).await,
                 "/download_game" => {
                     super::store::games::download_game(self.header.clone(), self.body.clone())
                 }

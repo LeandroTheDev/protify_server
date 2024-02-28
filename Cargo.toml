@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-hyper = { version = "1", features = ["full"] }
-tokio = { version = "1", features = ["full"] }
-hyper-util = { version = "0.1", features = ["full"] }
-http-body-util = "0.1"
-colored = "2.1.0"
-settimeout = "0.1.2"
+tokio = { version = "1", features = ["full"] } # Await Future handler
+hyper = { version = "1", features = ["full"] } # Http
+hyper-util = { version = "0.1", features = ["full"] } # Http
+http-body-util = "0.1" # Http
+settimeout = "0.1.2" #Timeout
 serde_json = "=1.0.114" # Json Encoder
+mysql = "24.0.0"

@@ -1,5 +1,5 @@
 //Protify Dependencies
-use crate::components::authentication::Authentication;
+use crate::components::authentication::{Authentication, Permissions};
 use crate::request::handler::{DefaultResponse, ErrorStruct};
 
 //Rust Dependencies
@@ -10,12 +10,19 @@ use http_body_util::Full;
 use hyper::{body::Bytes, HeaderMap, Response, StatusCode};
 use serde_json::{json, Value};
 
-pub fn store_main(header: HeaderMap) -> Result<Response<Full<Bytes>>, Infallible> {
-    let authentication: Authentication = Authentication::new(header);
-    if !authentication.authenticate(Authentication::ACTION_STORE_MAIN) {
-        return ErrorStruct::authentication_required();
-    }
-    
+pub async fn store_main(header: HeaderMap) -> Result<Response<Full<Bytes>>, Infallible> {
+    match Authentication::new(header) {
+        Ok(authentication) => {
+            if authentication
+                .authenticate(Permissions::ACTION_STORE_MAIN)
+                .await
+                != Permissions::PERMISSION_GRANTED
+            {
+                return ErrorStruct::authentication_required();
+            }
+        }
+        Err(err) => return ErrorStruct::internal_server_error(err.to_string()),
+    };
     //Store Path
     let mut store_path: PathBuf;
     //Getting the protify path
@@ -29,7 +36,7 @@ pub fn store_main(header: HeaderMap) -> Result<Response<Full<Bytes>>, Infallible
         }
     }
     store_path.push("store");
-    
+
     //Games and Softwares
     let mut games: Vec<String> = Vec::new();
     let mut softwares: Vec<String> = Vec::new();

@@ -39,7 +39,7 @@ impl ErrorStruct {
     pub fn not_found() -> Result<Response<Full<Bytes>>, Infallible> {
         //Creating the response
         let json_body: Value = json!({
-            "message": "not_found_cannot_find_the_specific_url"
+            "MESSAGE": "not_found_cannot_find_the_specific_url"
         });
         let mut response: DefaultResponse =
             DefaultResponse::new(json_body.to_string(), StatusCode::NOT_FOUND);
@@ -48,7 +48,7 @@ impl ErrorStruct {
     pub fn size_limit() -> Result<Response<Full<Bytes>>, Infallible> {
         //Creating the response
         let json_body = json!({
-            "message": "size_limit"
+            "MESSAGE": "size_limit"
         });
         let mut response: DefaultResponse =
             DefaultResponse::new(json_body.to_string(), StatusCode::NOT_ACCEPTABLE);
@@ -57,7 +57,7 @@ impl ErrorStruct {
     pub fn internal_server_error(reason: String) -> Result<Response<Full<Bytes>>, Infallible> {
         //Creating the response
         let json_body = json!({
-            "message": reason
+            "MESSAGE": reason
         });
         let mut response: DefaultResponse =
             DefaultResponse::new(json_body.to_string(), StatusCode::INTERNAL_SERVER_ERROR);
@@ -66,7 +66,7 @@ impl ErrorStruct {
     pub fn authentication_required() -> Result<Response<Full<Bytes>>, Infallible> {
         //Creating the response
         let json_body = json!({
-            "message": "user_dont_have_access_to_this_action"
+            "MESSAGE": "user_dont_have_access_to_this_action"
         });
         let mut response: DefaultResponse = DefaultResponse::new(
             json_body.to_string(),
@@ -77,7 +77,7 @@ impl ErrorStruct {
     pub fn invalid_parameters() -> Result<Response<Full<Bytes>>, Infallible> {
         //Creating the response
         let json_body = json!({
-            "message": "invalid_parameters"
+            "MESSAGE": "invalid_parameters"
         });
         let mut response: DefaultResponse = DefaultResponse::new(
             json_body.to_string(),
@@ -165,7 +165,7 @@ impl RequestHandler {
                 //Not found request
                 _ => ErrorStruct::not_found(),
             },
-            //POST
+            //PATCH
             Method::PATCH => match url_string {
                 "/change_username" => profile::user::User::change_username(self.body.clone()),
                 "/limit_overflow" => ErrorStruct::size_limit(),

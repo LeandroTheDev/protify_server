@@ -1,3 +1,5 @@
-/target
-/store
-Cargo.lock
+http/target
+http/Cargo.lock
+http/target
+socket/Cargo.lock
+socket/target

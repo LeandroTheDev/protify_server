@@ -67,11 +67,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             continue;
         }
 
-        // Convert the TcpStream into Io Tokio Stream
+        //Convert the TcpStream into Io Tokio Stream
         let io = TokioIo::new(stream);
 
-        // Handle multiple connections concurrently
+        //Handle multiple connections concurrently
         tokio::task::spawn(async move {
+            //Creates the handler
             let service_handler = Arc::new(ServiceHandler::new(address_string));
 
             let cloned_handler = Arc::clone(&service_handler);
@@ -86,7 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .serve_connection(io, service_function)
                 .await
             {
-                println!("[Server] User failed to connect: {:?}", err);
+                println!("[Server] User request failed to connect: {:?}", err);
             }
         });
     }
@@ -99,32 +100,17 @@ impl ServiceHandler {
     pub fn new(client_ip: String) -> Self {
         ServiceHandler { ip: client_ip }
     }
+
+    //Handle the HTTP request
     pub async fn handle_service(
         &self,
         request: Request<hyper::body::Incoming>,
     ) -> Result<Response<Full<Bytes>>, Infallible> {
-        //Function Helper to handle request
-        fn handle_request(
-            url: String,
-            method: Method,
-            header: hyper::HeaderMap,
-            query: HashMap<String, String>,
-            body_string: String,
-        ) -> Result<Response<Full<Bytes>>, Infallible> {
-            //Creating the handler for url
-            let handler: RequestHandler =
-                RequestHandler::new(url.to_string(), method, header, query, body_string);
-            //Receiving the response
-            let response: Result<Response<Full<Bytes>>, Infallible> = handler.handle_request();
-            //Returning to the client
-            response
-        }
-
         //Getting the url
         let mut url: String = request.uri().path().to_string();
         //Checking url limit size
         if url.len() > 1000 {
-            return handle_request(
+            return Self::http_response(
                 String::from("/limit_overflow"),
                 Method::GET,
                 HeaderMap::new(),
@@ -132,7 +118,6 @@ impl ServiceHandler {
                 String::from("Limit Overflow"),
             );
         }
-        
         //Getting the query
         let mut query: HashMap<String, String> = HashMap::new();
         //Spliting the string to receive only the "&..." part
@@ -160,7 +145,7 @@ impl ServiceHandler {
         };
         //Check the headers size limit
         if headers_size == 255 {
-            return handle_request(
+            return Self::http_response(
                 String::from("/limit_overflow"),
                 Method::GET,
                 headers,
@@ -183,7 +168,7 @@ impl ServiceHandler {
         };
         //Check body size limit in kilobytes
         if body_size == 255 {
-            return handle_request(
+            return Self::http_response(
                 String::from("/limit_overflow"),
                 Method::GET,
                 headers,
@@ -202,6 +187,23 @@ impl ServiceHandler {
         let body_string: String = String::from_utf8_lossy(&body_bytes.to_vec()).into_owned();
 
         //Return the response for the client
-        handle_request(url, method, headers, query, body_string)
+        Self::http_response(url, method, headers, query, body_string)
+    }
+
+    ///Creates the response based in parameters
+    fn http_response(
+        url: String,
+        method: Method,
+        header: hyper::HeaderMap,
+        query: HashMap<String, String>,
+        body_string: String,
+    ) -> Result<Response<Full<Bytes>>, Infallible> {
+        //Creating the handler for url
+        let handler: RequestHandler =
+            RequestHandler::new(url.to_string(), method, header, query, body_string);
+        //Receiving the response
+        let response: Result<Response<Full<Bytes>>, Infallible> = handler.handle_request();
+        //Returning to the client
+        response
     }
 }

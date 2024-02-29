@@ -4,6 +4,7 @@ use std::{
 };
 
 use mysql::{prelude::Queryable, *};
+use serde_json::{from_str, json};
 
 ///Connect to differents tables with this struct
 ///
@@ -20,8 +21,9 @@ pub struct Database {
 impl Database {
     pub const DATABASE_NAME: &'static str = "protify_server";
     pub const DATABASE_USERNAME: &'static str = "admin";
-    pub const DATABASE_PASSWORD: &'static str = "secret-password";
-    pub const DATABASE_IP: &'static str = "127.0.0.1";
+    pub const DATABASE_PASSWORD: &'static str =
+        "SIt65MtHNLS5yZL2Ss5BBsu7HQGZag4kQqebxXIEBaIJvKH6S9";
+    pub const DATABASE_IP: &'static str = "leandrothedev.duckdns.org";
     pub const DATABASE_PORTS: u16 = 3306;
 
     ///Create a new instance of database, will return Err if cannot connect to database
@@ -207,12 +209,17 @@ impl Database {
         hash_response
     }
 
+    ///Convert a HashMap<String, String> to a compatible
+    ///version to json with the correct primite values
     pub fn convert_hash_map_to_json_value(
         hashmap: HashMap<String, String>,
     ) -> HashMap<String, serde_json::Value> {
         let mut converted_hash: HashMap<String, serde_json::Value> = HashMap::new();
         //Swipe the the response and get key and value
         for (key, value) in hashmap.clone().iter_mut() {
+            //Default
+            converted_hash.insert(key.to_string(), json!(value));
+
             //Try to convert to int
             match value.as_str().parse::<i32>() {
                 //Success Converting
@@ -225,6 +232,26 @@ impl Database {
                 }
                 Err(_) => {}
             };
+            //Try to convert to bool
+            match value.as_str().parse::<bool>() {
+                //Success Converting
+                Ok(value_parsed) => {
+                    converted_hash.insert(key.to_string(), json!(value_parsed));
+                    continue;
+                }
+                Err(_) => {}
+            };
+            //Try to convert to List
+            match from_str::<serde_json::Value>(value) {
+                //Success transforming in json string
+                Ok(value_parsed) => {
+                    //Success converting in json string to list
+                    if let serde_json::Value::Array(vec) = value_parsed {
+                        converted_hash.insert(key.to_string(), json!(vec));
+                    }
+                }
+                Err(_) => {}
+            }
         }
         converted_hash
     }

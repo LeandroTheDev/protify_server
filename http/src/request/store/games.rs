@@ -105,8 +105,8 @@ pub fn store_showcase() -> Result<Response<Full<Bytes>>, Infallible> {
 
     //Success Response
     let json_body: Value = json!({
-        "message": "SUCCESS",
-        "content": store_items,
+        "MESSAGE": "SUCCESS",
+        "CONTENT": store_items,
     });
     let mut response: DefaultResponse = DefaultResponse::new(json_body.to_string(), StatusCode::OK);
     Ok(response.build_response())
@@ -114,7 +114,7 @@ pub fn store_showcase() -> Result<Response<Full<Bytes>>, Infallible> {
 pub fn download_item(query: HashMap<String, String>) -> Result<Response<Full<Bytes>>, Infallible> {
     println!("{:?}", query);
     let json_body: Value = json!({
-        "message": "SUCCESS"
+        "MESSAGE": "SUCCESS"
     });
     let mut response: DefaultResponse = DefaultResponse::new(json_body.to_string(), StatusCode::OK);
     Ok(response.build_response())
@@ -153,10 +153,9 @@ pub fn get_item_info(query: HashMap<String, String>) -> Result<Response<Full<Byt
         Err(err) => return ErrorStruct::internal_server_error(err.to_string()),
     }
     let json_body: Value = json!({
-        "message": "SUCCESS",
-        "content": item_data
+        "MESSAGE": "SUCCESS",
+        "CONTENT": item_data
     });
     let mut response: DefaultResponse = DefaultResponse::new(json_body.to_string(), StatusCode::OK);
-    println!("{:?}", item_data);
     Ok(response.build_response())
 }

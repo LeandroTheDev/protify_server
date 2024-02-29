@@ -11,12 +11,10 @@ use serde_json::{json, Value};
 
 pub struct User {}
 impl User {
-    pub fn change_username(
-        body: String,
-    ) -> Result<Response<Full<Bytes>>, Infallible> {
+    pub fn change_username(body: String) -> Result<Response<Full<Bytes>>, Infallible> {
         println!("{:?}", body);
         let json_body: Value = json!({
-            "message": "SUCCESS"
+            "MESSAGE": "SUCCESS"
         });
         let mut response: DefaultResponse =
             DefaultResponse::new(json_body.to_string(), StatusCode::OK);

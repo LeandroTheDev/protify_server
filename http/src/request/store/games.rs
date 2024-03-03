@@ -13,60 +13,6 @@ use hyper::{body::Bytes, Response, StatusCode};
 use serde_json::{json, Value};
 
 pub fn store_showcase() -> Result<Response<Full<Bytes>>, Infallible> {
-    // //Store Path
-    // let mut store_path: PathBuf;
-    // //Getting the protify path
-    // {
-    //     if let Ok(protify_path) = env::current_dir() {
-    //         store_path = protify_path.clone();
-    //     } else {
-    //         return ErrorStruct::internal_server_error(String::from(
-    //             "invalid_store_path_contact_the_server_owner",
-    //         ));
-    //     }
-    // }
-    // store_path.push("store");
-
-    // //Games and Softwares
-    // let mut games: Vec<String> = Vec::new();
-    // let mut softwares: Vec<String> = Vec::new();
-    // //Get games
-    // {
-    //     store_path.push("games");
-    //     let directory: Result<ReadDir, std::io::Error> = store_path.read_dir();
-    //     match directory {
-    //         Ok(dir) => {
-    //             for entry_result in dir {
-    //                 match entry_result {
-    //                     Ok(entry) => games.push(entry.file_name().to_string_lossy().to_string()),
-    //                     Err(e) => eprintln!("[Games] Cannot read the game: {:?}", e.kind()),
-    //                 }
-    //             }
-    //         }
-    //         Err(e) => eprintln!("[Games] Cannot read the games folder: {:?}", e.kind()),
-    //     }
-    //     store_path.pop();
-    // }
-    // //Get Softwares
-    // {
-    //     store_path.push("softwares");
-    //     let directory: Result<ReadDir, std::io::Error> = store_path.read_dir();
-    //     match directory {
-    //         Ok(dir) => {
-    //             for entry_result in dir {
-    //                 match entry_result {
-    //                     Ok(entry) => {
-    //                         softwares.push(entry.file_name().to_string_lossy().to_string())
-    //                     }
-    //                     Err(e) => eprintln!("[Games] Cannot read the softwares: {:?}", e.kind()),
-    //                 }
-    //             }
-    //         }
-    //         Err(e) => eprintln!("[Games] Cannot read the softwares folder: {:?}", e.kind()),
-    //     }
-    //     store_path.pop();
-    // }
-
     //Getting the store items throught database
     let mut store_items: Vec<u32> = vec![];
     let database_result: Result<Database, std::io::Error> = Database::new();

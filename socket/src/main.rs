@@ -18,6 +18,9 @@ fn main() {
     let server = Server::bind(server_address).unwrap();
     println!("[Socket] Listining in ports: {:?}", PORTS);
 
+    //Addreses using the services, only 1 address can use only 1 service at time
+    let mut ip_services: HashMap<String, bool> = HashMap::new();
+
     for request in server.filter_map(Result::ok) {
         //Try to accept connection
         let client = match request.accept() {
@@ -34,10 +37,24 @@ fn main() {
             //Invalid address
             Err(_) => continue,
         };
-        println!("{} connected", ip);
+        println!("[Server] {} connected", ip);
+
+        //Services Check
+        match ip_services.get(&ip.to_string()) {
+            Some(_) => {
+                println!(
+                    "[Server] {} trying to access more than 1 service at a time",
+                    ip
+                );
+                continue;
+            }
+            None => {
+                let _ = ip_services.insert(ip.to_string(), true);
+            }
+        }
 
         //Spliting the client into receiver and sender
-        let (mut receiver, mut sender) = match client.split() {
+        let (mut receiver, sender) = match client.split() {
             Ok(value) => value,
             //Cannot split the receivers and senders
             Err(_) => {
@@ -46,12 +63,19 @@ fn main() {
             }
         };
 
+        let mut handler: handler::ResponseHandler =
+            handler::ResponseHandler::new(sender, ip.to_string());
+
         //Awaiting for client messages
         for message in receiver.incoming_messages() {
-            //Message check
+            //Connection check
             let message = match message {
                 Ok(message) => message,
-                Err(_) => break,
+                Err(_) => {
+                    ip_services.remove(&ip.to_string());
+                    println!("[Server] {} connection terminated", ip);
+                    break;
+                }
             };
 
             //Process the received message
@@ -81,14 +105,13 @@ fn main() {
                             response_body.insert("ID".to_owned(), id.to_string());
                         }
                     }
+                    //Checking if action is empty
                     if response_action.as_str() == "" {
                         eprint!("[Server] Invalid response from: {}", ip);
                     }
 
-                    handler::ResponseHandler::handle_response();
-                    sender
-                        .send_message(&OwnedMessage::Text(String::from("ok")))
-                        .unwrap();
+                    handler.set_body_action(response_body, response_action);
+                    handler.handle_response();
                 }
                 _ => (),
             }

@@ -4,3 +4,4 @@ http/Cargo.lock
 http/target
 socket/Cargo.lock
 socket/target
+data/store/*

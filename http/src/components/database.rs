@@ -23,7 +23,7 @@ impl Database {
     pub const DATABASE_USERNAME: &'static str = "admin";
     pub const DATABASE_PASSWORD: &'static str =
         "SIt65MtHNLS5yZL2Ss5BBsu7HQGZag4kQqebxXIEBaIJvKH6S9";
-    pub const DATABASE_IP: &'static str = "leandrothedev.duckdns.org";
+    pub const DATABASE_IP: &'static str = "192.168.15.151";
     pub const DATABASE_PORTS: u16 = 3306;
 
     ///Create a new instance of database, will return Err if cannot connect to database

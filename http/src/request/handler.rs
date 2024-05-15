@@ -27,7 +27,7 @@ impl DefaultResponse {
     ///Build the response and return the Response with the bytes and parameters
     pub fn build_response(&mut self) -> Response<Full<Bytes>> {
         //Getting the status code
-        let status_code = self.response.status_mut();
+        let status_code: &mut StatusCode = self.response.status_mut();
         //Changing the status code to 401 (not found)
         *status_code = self.status_code;
         self.response.clone()
@@ -148,6 +148,7 @@ impl RequestHandler {
                     super::store::games::get_item_info(self.query.clone())
                 }
                 "/download_item" => {
+                    let auth: Authentication;
                     //Authentication Check
                     match Authentication::new(self.header.clone()) {
                         Ok(authentication) => {
@@ -155,11 +156,13 @@ impl RequestHandler {
                                 != Permissions::PERMISSION_GRANTED
                             {
                                 return ErrorStruct::authentication_required();
-                            }
+                            } else {
+                                auth = authentication;
+                            };
                         }
                         Err(err) => return ErrorStruct::internal_server_error(err.to_string()),
                     };
-                    super::store::games::download_item(self.query.clone())
+                    super::store::games::download_item(self.query.clone(), auth)
                 }
                 "/limit_overflow" => ErrorStruct::size_limit(),
                 //Not found request

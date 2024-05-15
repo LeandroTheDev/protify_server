@@ -1,6 +1,6 @@
 //Protify Dependencies
 use crate::{
-    components::database::Database,
+    components::{authentication::Authentication, database::Database},
     request::handler::{DefaultResponse, ErrorStruct},
 };
 
@@ -57,7 +57,12 @@ pub fn store_showcase() -> Result<Response<Full<Bytes>>, Infallible> {
     let mut response: DefaultResponse = DefaultResponse::new(json_body.to_string(), StatusCode::OK);
     Ok(response.build_response())
 }
-pub fn download_item(query: HashMap<String, String>) -> Result<Response<Full<Bytes>>, Infallible> {
+/// Receive a request to download any item, after that the socket can determinate the
+/// authentication
+pub fn download_item(
+    query: HashMap<String, String>,
+    auth: Authentication,
+) -> Result<Response<Full<Bytes>>, Infallible> {
     println!("{:?}", query);
     let json_body: Value = json!({
         "MESSAGE": "SUCCESS"

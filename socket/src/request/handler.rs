@@ -1,5 +1,7 @@
 use std::{collections::HashMap, env, fs::ReadDir, net::TcpStream, path::PathBuf};
 
+
+
 use serde_json::{json, Value};
 use websocket::{sync::Writer, OwnedMessage};
 
@@ -11,6 +13,7 @@ pub struct ResponseHandler {
     service_type: String,
 }
 impl ResponseHandler {
+    /// Creates a new instance to handle the socket
     pub fn new(response_sender: Writer<TcpStream>, response_ip: String) -> ResponseHandler {
         ResponseHandler {
             ip: response_ip,
@@ -21,14 +24,16 @@ impl ResponseHandler {
         }
     }
 
+    /// Handle the response based in the action
     pub fn handle_response(&mut self) {
         match self.action.as_str() {
-            "DOWNLOAD_ITEM" => self.start_downloading(),
+            "AUTHENTICATE" => self.authenticate_user(),
             "GET_ITEM_INFO" => self.get_item_info(),
             _ => {}
         }
     }
 
+    /// Updates body and action from the actual object
     pub fn set_body_action(
         &mut self,
         response_body: HashMap<String, String>,
@@ -38,7 +43,9 @@ impl ResponseHandler {
         self.action = response_action;
     }
 
-    fn start_downloading(&mut self) {
+    /// Handles the Authentication
+    fn authenticate_user(&mut self) {
+        
         let mut response: HashMap<String, String> = HashMap::new();
         response.insert(String::from("MESSAGE"), String::from("AUTHENTICATED"));
         let result = self

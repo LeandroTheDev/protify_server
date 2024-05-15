@@ -37,13 +37,13 @@ fn main() {
             //Invalid address
             Err(_) => continue,
         };
-        println!("[Server] {} connected", ip);
+        println!("[Socket] {} connected", ip);
 
         //Services Check
         match ip_services.get(&ip.to_string()) {
             Some(_) => {
                 println!(
-                    "[Server] {} trying to access more than 1 service at a time",
+                    "[Socket] {} trying to access more than 1 service at a time",
                     ip
                 );
                 continue;
@@ -58,7 +58,7 @@ fn main() {
             Ok(value) => value,
             //Cannot split the receivers and senders
             Err(_) => {
-                eprintln!("[Server] Panic spliting client: {}", ip);
+                eprintln!("[Socket] Panic spliting client: {}", ip);
                 continue;
             }
         };
@@ -73,7 +73,7 @@ fn main() {
                 Ok(message) => message,
                 Err(_) => {
                     ip_services.remove(&ip.to_string());
-                    println!("[Server] {} connection terminated", ip);
+                    println!("[Socket] {} connection terminated", ip);
                     break;
                 }
             };
@@ -107,7 +107,7 @@ fn main() {
                     }
                     //Checking if action is empty
                     if response_action.as_str() == "" {
-                        eprint!("[Server] Invalid response from: {}", ip);
+                        eprint!("[Socket] Invalid response from: {}", ip);
                     }
 
                     handler.set_body_action(response_body, response_action);

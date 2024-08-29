@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::{
     collections::HashMap,
     io::{self, ErrorKind},
@@ -21,9 +23,8 @@ pub struct Database {
 impl Database {
     pub const DATABASE_NAME: &'static str = "protify_server";
     pub const DATABASE_USERNAME: &'static str = "admin";
-    pub const DATABASE_PASSWORD: &'static str =
-        "SIt65MtHNLS5yZL2Ss5BBsu7HQGZag4kQqebxXIEBaIJvKH6S9";
-    pub const DATABASE_IP: &'static str = "leandrothedev.duckdns.org";
+    pub const DATABASE_PASSWORD: &'static str = "secretpassword";
+    pub const DATABASE_IP: &'static str = "127.0.0.1";
     pub const DATABASE_PORTS: u16 = 3306;
 
     ///Create a new instance of database, will return Err if cannot connect to database

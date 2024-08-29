@@ -1,7 +1,4 @@
 .vscode
-http/target
-http/Cargo.lock
-http/target
-socket/Cargo.lock
-socket/target
-data/store/*
+source/target
+source/Cargo.lock
+source/target

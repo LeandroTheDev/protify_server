@@ -28,6 +28,7 @@ impl Protify {
     fn get_requests(response: HttpResponse) {
         match response.url.as_str() {
             "/store_showcase" => pages::store::Instance::showcase(response),
+            "/get_item_info" => pages::store::Instance::get_item(response),
             _ => Self::error(response, ProtifyError::NotFound),
         }
     }

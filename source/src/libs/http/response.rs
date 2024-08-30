@@ -1,6 +1,6 @@
 use std::{
+    collections::HashMap,
     fmt,
-    io::Write,
     net::{IpAddr, TcpStream},
 };
 
@@ -17,6 +17,7 @@ pub struct HttpResponse {
     pub body: String,
     pub stream: TcpStream,
     pub status: HttpConnectionStatus,
+    pub query: HashMap<String, String>,
 
     pub status_code: u16,
     pub status_message: String,
@@ -34,6 +35,7 @@ impl HttpResponse {
         _body: String,
         _stream: TcpStream,
         _status: HttpConnectionStatus,
+        _query: HashMap<String, String>,
     ) -> HttpResponse {
         Self {
             address: _address,
@@ -46,6 +48,7 @@ impl HttpResponse {
             body: _body,
             stream: _stream,
             status: _status,
+            query: _query,
 
             // Default values
             status_code: 200,

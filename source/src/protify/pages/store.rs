@@ -1,6 +1,6 @@
 use std::{collections::HashMap, io::Write};
 
-use serde_json::json;
+use serde_json::{json, Value};
 
 // Context Libs
 use crate::{
@@ -50,6 +50,57 @@ impl Instance {
         response.status_code = 200;
         response.status_message = String::from("SUCCESS");
         let json_body: String = json!(store_items).to_string();
+
+        // Sending to the client
+        let _ = response
+            .stream
+            .write_all(response.generate_response(json_body).as_bytes());
+    }
+
+    pub fn get_item(mut response: HttpResponse) {
+        // Getting the item id from query
+        let item_id: u32 = match response.query.get("item") {
+            Some(id_str) => match id_str.parse::<u32>() {
+                Ok(id) => id,
+                Err(_) => 0,
+            },
+            None => 0,
+        };
+        // Checking if the id is valid
+        if item_id == 0 {
+            return Protify::error(response, ProtifyError::InvalidParameter);
+        }
+
+        let item_data: HashMap<String, Value>;
+        //Getting item data
+        let database_result: Result<Database, std::io::Error> = Database::new();
+        match database_result {
+            Ok(database) => {
+                let database_response: Vec<HashMap<String, String>> = database.select(
+                    vec![],
+                    "STORE",
+                    vec![format!("ID = {}", item_id).as_str()],
+                    vec!["ID", "NAME", "CATEGORY", "LANGUAGES", "DESCRIPTION"],
+                );
+                //Check database error
+                match database.check_errors(&database_response) {
+                    Some(_) => return Protify::error(response, ProtifyError::InvalidParameter),
+                    None => {}
+                }
+                //Check if exist
+                if database_response.len() == 0 {
+                    return Protify::error(response, ProtifyError::InvalidParameter);
+                }
+                //Convert the data to json
+                item_data = Database::convert_hash_map_to_json_value(database_response[0].clone());
+            }
+            Err(_) => return Protify::error(response, ProtifyError::InternalError),
+        }
+
+        // Generating success message
+        response.status_code = 200;
+        response.status_message = String::from("SUCCESS");
+        let json_body: String = json!(item_data).to_string();
 
         // Sending to the client
         let _ = response

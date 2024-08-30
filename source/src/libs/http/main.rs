@@ -4,6 +4,7 @@ use crate::libs::http::response::HttpResponse;
 use crate::libs::http::status::HttpConnectionStatus;
 use crate::libs::logs::main::LogsInstance;
 
+use std::collections::HashMap;
 use std::net::Ipv4Addr;
 // Rust Libs
 use std::{
@@ -170,9 +171,24 @@ fn request_treatment(
         _ = stream.flush();
         status = HttpConnectionStatus::Failed;
     }
-    let method = request_methods[0];
-    let request_url = request_methods[1];
-    let version = request_methods[2];
+    let method: &str = request_methods[0];
+    let mut request_url: &str = request_methods[1];
+    let version: &str = request_methods[2];
+
+    // Formatting the quries into hashmap
+    let mut query: HashMap<String, String> = HashMap::new();
+    for pair in request_url.split('&') {
+        let mut split_pair = pair.split('=');
+        if let (Some(key), Some(value)) = (split_pair.next(), split_pair.next()) {
+            // Converting everthing into string
+            query.insert(key.to_string(), value.to_string());
+        }
+    }
+    // Removing the queries from url
+    request_url = match request_url.split_once('&') {
+        Some((before_ampersand, _)) => before_ampersand, // Url without queries
+        None => request_url, // If cannot find the queries return the url
+    };
 
     // Line 1 should receive the: User Agent
     let request_agent: Vec<&str> = lines[1].split_whitespace().collect();
@@ -182,7 +198,7 @@ fn request_treatment(
         _ = stream.flush();
         status = HttpConnectionStatus::Failed;
     }
-    let agent = request_agent[1];
+    let agent: &str = request_agent[1];
 
     // Line 2 should receive the: Enconding
     let request_enconding: Vec<&str> = lines[2].split_whitespace().collect();
@@ -192,7 +208,7 @@ fn request_treatment(
         _ = stream.flush();
         status = HttpConnectionStatus::Failed;
     }
-    let enconding = request_enconding[1];
+    let enconding: &str = request_enconding[1];
 
     // Line 3 should have the client address
     let request_address: Vec<&str> = lines[3].split_whitespace().collect();
@@ -241,5 +257,6 @@ fn request_treatment(
         body,
         stream,
         status,
+        query,
     )
 }

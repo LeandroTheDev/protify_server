@@ -20,3 +20,14 @@ let database_response: Vec<HashMap<String, String>> = database.select(vec![], "T
 ```
 This is select from table ALL [ID, USER, PASSWORD]
 #
+To select specific from database use the:
+```rust
+let database_response: Vec<HashMap<String, String>> = database.select(
+    vec![],
+    "TABLENAME",
+    vec![format!("ID = {}", item_id).as_str()],
+    vec!["ID", "NAME", "CATEGORY", "LANGUAGES", "DESCRIPTION"],
+);
+```
+This will select from table only with the same ``item_id``
+#

@@ -8,6 +8,8 @@ use std::{
 use mysql::{prelude::Queryable, *};
 use serde_json::{from_str, json};
 
+use crate::libs::logs::main::LogsInstance;
+
 ///Connect to differents tables with this struct
 ///
 ///Considerations:
@@ -22,9 +24,9 @@ pub struct Database {
 }
 impl Database {
     pub const DATABASE_NAME: &'static str = "protify_server";
-    pub const DATABASE_USERNAME: &'static str = "admin";
-    pub const DATABASE_PASSWORD: &'static str = "secretpassword";
-    pub const DATABASE_IP: &'static str = "127.0.0.1";
+    pub const DATABASE_USERNAME: &'static str = "protify_admin";
+    pub const DATABASE_PASSWORD: &'static str = "42TqG4Shm0VZxx2b2GWAzcLm6htIAb2u7NR5EomArIIlHlBAP1";
+    pub const DATABASE_IP: &'static str = "leandrothedev.duckdns.org";
     pub const DATABASE_PORTS: u16 = 3306;
 
     ///Create a new instance of database, will return Err if cannot connect to database
@@ -292,16 +294,20 @@ impl Database {
 
     ///Log Errors
     fn log_error(reason: &io::Error, query: &str) {
-        eprintln!(
-            r"-------------------
+        LogsInstance::print(
+            format!(
+                r"-------------------
 [Database] Panic:
 query: {:?}
 type: {:?}
 error: {:?}
 -------------------",
-            query,
-            reason.kind(),
-            reason.to_string()
+                query,
+                reason.kind(),
+                reason.to_string()
+            )
+            .as_str(),
+            colored::Color::Red,
         );
     }
 

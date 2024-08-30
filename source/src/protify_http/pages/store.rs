@@ -1,11 +1,11 @@
-use std::{collections::HashMap, io::Write};
+use std::{collections::HashMap, env, io::Write};
 
 use serde_json::{json, Value};
 
 // Context Libs
 use crate::{
     libs::{database::main::Database, http::response::HttpResponse},
-    protify::main::{Protify, ProtifyError},
+    protify_http::main::{ProtifyError, ProtifyHttp},
 };
 
 pub struct Instance {}
@@ -20,7 +20,7 @@ impl Instance {
                     database.select(vec![], "SHOWCASE", vec![], vec!["ID"]);
                 //Check database error
                 match database.check_errors(&database_response) {
-                    Some(_) => return Protify::error(response, ProtifyError::DatabaseError),
+                    Some(_) => return ProtifyHttp::error(response, ProtifyError::DatabaseError),
                     None => {}
                 }
                 //Swiping all showcases
@@ -43,7 +43,7 @@ impl Instance {
                     length += 1;
                 }
             }
-            Err(_) => return Protify::error(response, ProtifyError::DatabaseError),
+            Err(_) => return ProtifyHttp::error(response, ProtifyError::DatabaseError),
         }
 
         // Generating success message
@@ -68,7 +68,7 @@ impl Instance {
         };
         // Checking if the id is valid
         if item_id == 0 {
-            return Protify::error(response, ProtifyError::InvalidParameter);
+            return ProtifyHttp::error(response, ProtifyError::InvalidParameter);
         }
 
         let item_data: HashMap<String, Value>;
@@ -84,17 +84,17 @@ impl Instance {
                 );
                 //Check database error
                 match database.check_errors(&database_response) {
-                    Some(_) => return Protify::error(response, ProtifyError::InvalidParameter),
+                    Some(_) => return ProtifyHttp::error(response, ProtifyError::InvalidParameter),
                     None => {}
                 }
                 //Check if exist
                 if database_response.len() == 0 {
-                    return Protify::error(response, ProtifyError::InvalidParameter);
+                    return ProtifyHttp::error(response, ProtifyError::InvalidParameter);
                 }
                 //Convert the data to json
                 item_data = Database::convert_hash_map_to_json_value(database_response[0].clone());
             }
-            Err(_) => return Protify::error(response, ProtifyError::InternalError),
+            Err(_) => return ProtifyHttp::error(response, ProtifyError::InternalError),
         }
 
         // Generating success message
@@ -106,5 +106,15 @@ impl Instance {
         let _ = response
             .stream
             .write_all(response.generate_response(json_body).as_bytes());
+    }
+
+    pub fn start_download(mut response: HttpResponse) {
+        let directory = match env::current_exe() {
+            Ok(exe_path) => {
+                // Extrai o diretório (parent) do caminho do executável
+                exe_path.parent().map(|p| p.to_path_buf())
+            }
+            Err(_) => None,
+        };
     }
 }

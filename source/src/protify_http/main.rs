@@ -9,9 +9,9 @@ use std::fmt;
 
 use super::pages;
 
-pub struct Protify {}
-impl Protify {
-    pub fn new() -> Protify {
+pub struct ProtifyHttp {}
+impl ProtifyHttp {
+    pub fn new() -> ProtifyHttp {
         Self {}
     }
 
@@ -29,6 +29,7 @@ impl Protify {
         match response.url.as_str() {
             "/store_showcase" => pages::store::Instance::showcase(response),
             "/get_item_info" => pages::store::Instance::get_item(response),
+            "/start_download" => pages::store::Instance::start_download(response),
             _ => Self::error(response, ProtifyError::NotFound),
         }
     }

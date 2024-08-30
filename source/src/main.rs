@@ -14,12 +14,31 @@ use protify_stream::main::ProtifyStream;
 
 // Rust Libs
 use std::{
+    env,
     net::{IpAddr, Ipv4Addr},
     sync::mpsc,
     thread,
 };
 
 fn main() {
+    // Printing the current execution path
+    match env::current_exe() {
+        Ok(exe_path) => match exe_path.parent().map(|p| p.to_path_buf()) {
+            Some(path) => LogsInstance::print(
+                format!("Working on path: {:?}", path).as_str(),
+                colored::Color::White,
+            ),
+            None => LogsInstance::print(
+                "[ERROR] Cannot read the executable path",
+                colored::Color::Red,
+            ),
+        },
+        Err(err) => LogsInstance::print(
+            format!("[ERROR] Cannot read the executable path, reason: {}", err).as_str(),
+            colored::Color::Red,
+        ),
+    };
+
     // Protify Service
     {
         // Initializing http instance

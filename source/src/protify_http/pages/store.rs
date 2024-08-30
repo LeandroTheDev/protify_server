@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env, io::Write};
+use std::{collections::HashMap, env, io::Write, path::PathBuf};
 
 use serde_json::{json, Value};
 
@@ -109,12 +109,14 @@ impl Instance {
     }
 
     pub fn start_download(mut response: HttpResponse) {
-        let directory = match env::current_exe() {
-            Ok(exe_path) => {
-                // Extrai o diretório (parent) do caminho do executável
-                exe_path.parent().map(|p| p.to_path_buf())
-            }
-            Err(_) => None,
+        // Getting the PathBuf for the executable
+        let directory: PathBuf = match env::current_exe() {
+            Ok(exe_path) => match exe_path.parent().map(|p| p.to_path_buf()) {
+                Some(path) => path,
+                None => return ProtifyHttp::error(response, ProtifyError::InternalError),
+            },
+            Err(_) => return ProtifyHttp::error(response, ProtifyError::InternalError),
         };
+        println!("{:?}", directory);
     }
 }

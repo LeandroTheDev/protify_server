@@ -1,3 +1,6 @@
+### Archived
+This is no longer needed, because protify no longer will have a store and social features, will remain complety offline.
+
 # Protify Server
 
 Creates the server for hosting the protify features, protify is game/software launcher to make the life of linux users easy to run windows applications in linux or native applications, take a look in [Protify](https://github.com/LeandroTheDev/protify)
